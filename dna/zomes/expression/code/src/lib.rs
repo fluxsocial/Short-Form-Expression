@@ -7,9 +7,12 @@ extern crate serde_json;
 #[macro_use]
 extern crate holochain_json_derive;
 
+pub mod methods;
+
 use hdk::{
     entry_definition::ValidatingEntryType,
     error::ZomeApiResult,
+    holochain_persistence_api::cas::content::Address
 };
 use hdk::holochain_core_types::{
     entry::Entry,
@@ -24,12 +27,27 @@ use hdk::holochain_json_api::{
     error::JsonError,
     json::JsonString,
 };
+use hdk_proc_macros::zome;
 
-
-// see https://developer.holochain.org/api/0.0.47-alpha1/hdk/ for info on using the hdk library
-
-// This is a sample zome that defines an entry type "MyEntry" that can be committed to the
-// agent's chain via the exposed function create_my_entry
+/// An interface into a DNA which contains Expression information. Expected to be interacted with using expression Addresses 
+/// retrieved from a social context or by using a Identity retreived from a users social graph. 
+/// In this situation you can see that the Expression DNA/trait does not need to include any index capability
+/// as this is already infered to the agent by the place they got the expression from; social context or social graph.
+///
+/// If the expression should be private to a group of people then the host DNA should be membraned.
+pub trait ExpressionDao {
+    /// Create an expression and link it to yourself publicly with optional dna_address pointing to 
+    /// dna that should ideally be used for linking any comments to this expression
+    fn create_public_expression(content: String, inter_dna_link_dna: Option<Address>) -> Expression;
+    /// Get expressions authored by a given Agent/Identity
+    fn get_by_author(author: Identity, count: uint, page: uint) -> Vec<Expression>;
+    fn get_expression_by_address(address: Address) -> Option<Expression>;
+    
+    /// Send an expression to someone privately p2p
+    fn send_private(to: Identity, content: String, inter_dna_link_dna: Option<Address>) -> Result<(), ZomeApiError>;
+    /// Get private expressions sent to you
+    fn inbox() -> Result<Vec<Expression>, ZomeApiError>;
+}
 
 #[derive(Serialize, Deserialize, Debug, DefaultJson,Clone)]
 pub struct ShortFormExpression {
@@ -37,36 +55,39 @@ pub struct ShortFormExpression {
     body: String
 }
 
-fn definition() -> ValidatingEntryType {
-    entry!(
-        name: "expression",
-        description: "ShortForm Expression Entry",
-        sharing: Sharing::Public,
-        validation_package: || {
-            hdk::ValidationPackageDefinition::Entry
-        },
-
-        validation: | _validation_data: hdk::EntryValidationData<MyEntry>| {
-            Ok(())
-        }
-    )
+/// A holochain expression
+struct Expression {
+    entry: Entry,
+    headers: Vec<ChainHeader>,
+    expression_dna: Address,
+    inter_dna_link_dna: Option<Address>,
 }
 
-define_zome! {
-    entries: [
-       definition()
-    ]
+#[zome]
+pub mod shortform_expression {
+    #[entry_def]
+    pub fn group_entry_def() -> ValidatingEntryType {
+        entry!(
+            name: "shortform_expression",
+            description: "ShortForm Expression Entry",
+            sharing: Sharing::Public,
+            validation_package: || {
+                hdk::ValidationPackageDefinition::Entry
+            },
+    
+            validation: | _validation_data: hdk::EntryValidationData<ShortFormExpression>| {
+                Ok(())
+            }
+        )
+    }
 
-    init: || { Ok(()) }
-
-    validate_agent: |validation_data : EntryValidationData::<AgentId>| {
+    #[init]
+    pub fn init() {
         Ok(())
     }
 
-    functions: [
-    ]
-
-    traits: {
-        expression []
+    #[validate_agent]
+    pub fn validate_agent(validation_data: EntryValidationData<AgentId>) {
+        Ok(())
     }
 }
