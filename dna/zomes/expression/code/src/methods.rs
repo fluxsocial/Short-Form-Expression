@@ -3,7 +3,10 @@ use hdk::{
     holochain_core_types::entry::Entry,
     holochain_persistence_api::cas::content::Address,
     holochain_persistence_api::hash::HashString,
-    prelude::{GetEntryOptions, GetEntryResultType, StatusRequestKind},
+    prelude::{
+        GetEntryOptions, GetEntryResultType, GetLinksOptions, LinkMatch, Pagination,
+        SizePagination, StatusRequestKind,
+    },
     AGENT_ADDRESS, DNA_ADDRESS,
 };
 
@@ -46,7 +49,48 @@ impl ExpressionDao for Expression {
     }
 
     /// Get expressions authored by a given Agent/Identity
-    fn get_by_author(author: Identity, count: u32, page: u32) -> Vec<Expression> {}
+    fn get_by_author(
+        author: Address,
+        page_size: usize,
+        page_number: usize,
+    ) -> ZomeApiResult<Vec<Expression>> {
+        let links = hdk::get_links_result(
+            &author,
+            LinkMatch::Any,
+            LinkMatch::Any,
+            GetLinksOptions {
+                status_request: Default::default(),
+                headers: false,
+                timeout: Default::default(),
+                pagination: Some(Pagination::Size(SizePagination {
+                    page_number: page_number,
+                    page_size: page_size,
+                })),
+                sort_order: None,
+            },
+            GetEntryOptions {
+                status_request: StatusRequestKind::default(),
+                entry: true,
+                headers: true,
+                timeout: Default::default(),
+            },
+        )?;
+
+        Ok(links
+            .into_iter()
+            .map(|link| match link?.result {
+                GetEntryResultType::Single(result) => Ok(Expression {
+                    entry: result
+                        .entry
+                        .ok_or(ZomeApiError::Internal(String::from("Expected entry")))?,
+                    headers: result.headers,
+                    expression_dna: HashString::from(DNA_ADDRESS.to_string()),
+                }),
+                _ => panic!("Should not hit this, right?"),
+            })
+            .collect::<ZomeApiResult<Vec<Expression>>>()?)
+    }
+
     fn get_expression_by_address(address: Address) -> Option<Expression> {}
     /// Send an expression to someone privately p2p
     fn send_private(to: Identity, content: String, inter_dna_link_dna: Option<Address>) {}

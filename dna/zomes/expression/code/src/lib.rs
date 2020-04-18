@@ -32,7 +32,11 @@ pub trait ExpressionDao {
     /// dna that should ideally be used for linking any comments to this expression
     fn create_public_expression(content: String) -> ZomeApiResult<Expression>;
     /// Get expressions authored by a given Agent/Identity
-    fn get_by_author(author: Identity, count: u32, page: u32) -> Vec<Expression>;
+    fn get_by_author(
+        author: Address,
+        page_size: usize,
+        page_number: usize,
+    ) -> ZomeApiResult<Vec<Expression>>;
     fn get_expression_by_address(address: Address) -> Option<Expression>;
 
     /// Send an expression to someone privately p2p
@@ -88,5 +92,14 @@ pub mod shortform_expression {
     #[zome_fn("expression")]
     pub fn create_public_expression(content: String) -> ZomeApiResult<Expression> {
         Expression::create_public_expression(content)
+    }
+
+    #[zome_fn("expression")]
+    pub fn get_by_author(
+        author: Address,
+        page_size: usize,
+        page_number: usize,
+    ) -> ZomeApiResult<Vec<Expression>> {
+        Expression::get_by_author(author, page_size, page_number)
     }
 }
