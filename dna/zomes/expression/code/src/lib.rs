@@ -1,3 +1,4 @@
+#![feature(proc_macro_hygiene)]
 #[macro_use]
 extern crate hdk;
 extern crate serde;
@@ -11,16 +12,13 @@ pub mod methods;
 
 use hdk::{
     entry_definition::ValidatingEntryType,
-    error::ZomeApiResult,
     holochain_persistence_api::cas::content::Address
 };
 use hdk::holochain_core_types::{
     entry::Entry,
     dna::entry_types::Sharing,
-};
-
-use hdk::holochain_persistence_api::{
-    cas::content::Address,
+    agent::AgentId,
+    chain_header::ChainHeader
 };
 
 use hdk::holochain_json_api::{
@@ -40,14 +38,16 @@ pub trait ExpressionDao {
     /// dna that should ideally be used for linking any comments to this expression
     fn create_public_expression(content: String, inter_dna_link_dna: Option<Address>) -> Expression;
     /// Get expressions authored by a given Agent/Identity
-    fn get_by_author(author: Identity, count: uint, page: uint) -> Vec<Expression>;
+    fn get_by_author(author: Identity, count: u32, page: u32) -> Vec<Expression>;
     fn get_expression_by_address(address: Address) -> Option<Expression>;
     
     /// Send an expression to someone privately p2p
-    fn send_private(to: Identity, content: String, inter_dna_link_dna: Option<Address>) -> Result<(), ZomeApiError>;
+    fn send_private(to: Identity, content: String, inter_dna_link_dna: Option<Address>);
     /// Get private expressions sent to you
-    fn inbox() -> Result<Vec<Expression>, ZomeApiError>;
+    fn inbox() -> Vec<Expression>;
 }
+
+pub type Identity = AgentId;
 
 #[derive(Serialize, Deserialize, Debug, DefaultJson,Clone)]
 pub struct ShortFormExpression {
