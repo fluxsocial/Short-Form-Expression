@@ -21,7 +21,6 @@ impl ExpressionDao for Expression {
         let expression: ShortFormExpression = serde_json::from_str(&content)
             .map_err(|err| ZomeApiError::Internal(err.to_string()))?;
         let expression_entry = Entry::App("public_shortform_expression".into(), expression.into());
-
         // Commit and link entry
         let expression_address = hdk::commit_entry(&expression_entry)?;
         hdk::link_entries(&AGENT_ADDRESS, &expression_address, "", "")?;

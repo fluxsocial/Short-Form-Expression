@@ -85,7 +85,7 @@ pub mod shortform_expression {
                     "%agent_id",
                     link_type: "",
                     validation_package: || {
-                        hdk::ValidationPackageDefinition::ChainFull
+                        hdk::ValidationPackageDefinition::Entry
                     },
                     validation: | _validation_data: hdk::LinkValidationData | {
                         Ok(())
@@ -114,7 +114,7 @@ pub mod shortform_expression {
                     "%agent_id",
                     link_type: "inbox",
                     validation_package: || {
-                        hdk::ValidationPackageDefinition::ChainFull
+                        hdk::ValidationPackageDefinition::Entry
                     },
                     validation: | _validation_data: hdk::LinkValidationData | {
                         Ok(())
