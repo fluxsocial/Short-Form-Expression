@@ -78,7 +78,20 @@ pub mod shortform_expression {
 
             validation: | _validation_data: hdk::EntryValidationData<ShortFormExpression>| {
                 Ok(())
-            }
+            },
+            
+            links: [
+                from!(
+                    "%agent_id",
+                    link_type: "",
+                    validation_package: || {
+                        hdk::ValidationPackageDefinition::ChainFull
+                    },
+                    validation: | _validation_data: hdk::LinkValidationData | {
+                        Ok(())
+                    }
+                )
+            ]
         )
     }
 
@@ -94,7 +107,20 @@ pub mod shortform_expression {
 
             validation: | _validation_data: hdk::EntryValidationData<ShortFormExpression>| {
                 Ok(())
-            }
+            },
+
+            links: [
+                from!(
+                    "%agent_id",
+                    link_type: "inbox",
+                    validation_package: || {
+                        hdk::ValidationPackageDefinition::ChainFull
+                    },
+                    validation: | _validation_data: hdk::LinkValidationData | {
+                        Ok(())
+                    }
+                )
+            ]
         )
     }
 
@@ -113,11 +139,13 @@ pub mod shortform_expression {
         methods::handle_receive(from, msg_json)
     }
 
+    #[zome_fn("hc_public")]
     #[zome_fn("expression")]
     pub fn create_public_expression(content: String) -> ZomeApiResult<Expression> {
         Expression::create_public_expression(content)
     }
 
+    #[zome_fn("hc_public")]
     #[zome_fn("expression")]
     pub fn get_by_author(
         author: Address,
@@ -127,16 +155,19 @@ pub mod shortform_expression {
         Expression::get_by_author(author, page_size, page_number)
     }
 
+    #[zome_fn("hc_public")]
     #[zome_fn("expression")]
     pub fn get_expression_by_address(address: Address) -> ZomeApiResult<Option<Expression>> {
         Expression::get_expression_by_address(address)
     }
 
+    #[zome_fn("hc_public")]
     #[zome_fn("expression")]
     pub fn send_private(to: Address, content: String) -> ZomeApiResult<String> {
         Expression::send_private(to, content)
     }
 
+    #[zome_fn("hc_public")]
     #[zome_fn("expression")]
     pub fn inbox(
         from: Option<Address>,
