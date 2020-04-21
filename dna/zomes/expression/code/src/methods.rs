@@ -123,7 +123,7 @@ impl ExpressionDao for Expression {
     /// Send an expression to someone privately p2p
     fn send_private(to: Address, content: String) -> ZomeApiResult<String> {
         // Serialize data to check its valid before sending
-        let expression: ShortFormExpression = serde_json::from_str(&content)
+        let _expression: ShortFormExpression = serde_json::from_str(&content)
             .map_err(|err| ZomeApiError::Internal(err.to_string()))?;
         hdk::send(to.into(), content, Default::default())
     }
@@ -134,6 +134,43 @@ impl ExpressionDao for Expression {
         page_size: usize,
         page_number: usize,
     ) -> ZomeApiResult<Vec<Expression>> {
+        let links = hdk::get_links_result(
+            &AGENT_ADDRESS,
+            LinkMatch::Exactly("inbox"),
+            from.map(String::from)
+                .as_ref()
+                .map_or(LinkMatch::Any, |from| LinkMatch::Exactly(from.as_ref())),
+            GetLinksOptions {
+                status_request: Default::default(),
+                headers: false,
+                timeout: Default::default(),
+                pagination: Some(Pagination::Size(SizePagination {
+                    page_number: page_number,
+                    page_size: page_size,
+                })),
+                sort_order: None,
+            },
+            GetEntryOptions {
+                status_request: StatusRequestKind::default(),
+                entry: true,
+                headers: true,
+                timeout: Default::default(),
+            },
+        )?;
+
+        Ok(links
+            .into_iter()
+            .map(|link| match link?.result {
+                GetEntryResultType::Single(result) => Ok(Expression {
+                    entry: result.entry.ok_or(ZomeApiError::Internal(String::from(
+                        "Expected entry on link from identity",
+                    )))?,
+                    headers: result.headers,
+                    expression_dna: HashString::from(DNA_ADDRESS.to_string()),
+                }),
+                _ => panic!("Should not hit this, right?"),
+            })
+            .collect::<ZomeApiResult<Vec<Expression>>>()?)
     }
 }
 

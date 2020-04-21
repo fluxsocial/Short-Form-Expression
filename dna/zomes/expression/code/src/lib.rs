@@ -49,6 +49,7 @@ pub trait ExpressionDao {
     ) -> ZomeApiResult<Vec<Expression>>;
 }
 
+/// Expression data this DNA is hosting
 #[derive(Serialize, Deserialize, Debug, DefaultJson, Clone)]
 pub struct ShortFormExpression {
     background: Vec<String>,
@@ -57,7 +58,7 @@ pub struct ShortFormExpression {
 
 /// A holochain expression
 #[derive(Serialize, Deserialize, Debug, DefaultJson, Clone)]
-struct Expression {
+pub struct Expression {
     entry: Entry,
     headers: Vec<ChainHeader>,
     expression_dna: Address,
@@ -134,5 +135,14 @@ pub mod shortform_expression {
     #[zome_fn("expression")]
     pub fn send_private(to: Address, content: String) -> ZomeApiResult<String> {
         Expression::send_private(to, content)
+    }
+
+    #[zome_fn("expression")]
+    pub fn inbox(
+        from: Option<Address>,
+        page_size: usize,
+        page_number: usize,
+    ) -> ZomeApiResult<Vec<Expression>> {
+        Expression::inbox(from, page_size, page_number)
     }
 }
