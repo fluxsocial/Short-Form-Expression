@@ -15,7 +15,7 @@ use hdk::holochain_core_types::{
 };
 use hdk::{
     entry_definition::ValidatingEntryType, error::ZomeApiResult,
-    holochain_persistence_api::cas::content::Address, AGENT_ADDRESS,
+    holochain_persistence_api::cas::content::Address,
 };
 
 use hdk::holochain_json_api::{error::JsonError, json::JsonString};
@@ -37,15 +37,17 @@ pub trait ExpressionDao {
         page_size: usize,
         page_number: usize,
     ) -> ZomeApiResult<Vec<Expression>>;
-    fn get_expression_by_address(address: Address) -> Option<Expression>;
+    fn get_expression_by_address(address: Address) -> ZomeApiResult<Option<Expression>>;
 
     /// Send an expression to someone privately p2p
-    fn send_private(to: Identity, content: String, inter_dna_link_dna: Option<Address>);
-    /// Get private expressions sent to you
-    fn inbox() -> Vec<Expression>;
+    fn send_private(to: Address, content: String) -> ZomeApiResult<String>;
+    /// Get private expressions sent to you optionally filtered by sender address
+    fn inbox(
+        from: Option<Address>,
+        page_size: usize,
+        page_number: usize,
+    ) -> ZomeApiResult<Vec<Expression>>;
 }
-
-pub type Identity = AGENT_ADDRESS;
 
 #[derive(Serialize, Deserialize, Debug, DefaultJson, Clone)]
 pub struct ShortFormExpression {
@@ -64,11 +66,27 @@ struct Expression {
 #[zome]
 pub mod shortform_expression {
     #[entry_def]
-    pub fn group_entry_def() -> ValidatingEntryType {
+    pub fn expression_entry_def() -> ValidatingEntryType {
         entry!(
-            name: "shortform_expression",
-            description: "ShortForm Expression Entry",
+            name: "public_shortform_expression",
+            description: "Public ShortForm Expression Entry",
             sharing: Sharing::Public,
+            validation_package: || {
+                hdk::ValidationPackageDefinition::Entry
+            },
+
+            validation: | _validation_data: hdk::EntryValidationData<ShortFormExpression>| {
+                Ok(())
+            }
+        )
+    }
+
+    #[entry_def]
+    pub fn private_expression_entry_def() -> ValidatingEntryType {
+        entry!(
+            name: "private_shortform_expression",
+            description: "Private ShortForm Expression Entry",
+            sharing: Sharing::Private,
             validation_package: || {
                 hdk::ValidationPackageDefinition::Entry
             },
@@ -89,6 +107,11 @@ pub mod shortform_expression {
         Ok(())
     }
 
+    #[receive]
+    pub fn receive(from: Address, msg_json: String) {
+        methods::handle_receive(from, msg_json)
+    }
+
     #[zome_fn("expression")]
     pub fn create_public_expression(content: String) -> ZomeApiResult<Expression> {
         Expression::create_public_expression(content)
@@ -101,5 +124,15 @@ pub mod shortform_expression {
         page_number: usize,
     ) -> ZomeApiResult<Vec<Expression>> {
         Expression::get_by_author(author, page_size, page_number)
+    }
+
+    #[zome_fn("expression")]
+    pub fn get_expression_by_address(address: Address) -> ZomeApiResult<Option<Expression>> {
+        Expression::get_expression_by_address(address)
+    }
+
+    #[zome_fn("expression")]
+    pub fn send_private(to: Address, content: String) -> ZomeApiResult<String> {
+        Expression::send_private(to, content)
     }
 }
