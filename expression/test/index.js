@@ -46,7 +46,6 @@ const conductorConfig = Config.gen(
 )
 
 orchestrator.registerScenario("test create and get public expression", async (s, t) => {
-
   const {alice, bob} = await s.players({alice: conductorConfig, bob: conductorConfig}, true)
   // Make a call to a Zome function
   // indicating the function, and passing it an input
@@ -55,6 +54,19 @@ orchestrator.registerScenario("test create and get public expression", async (s,
   await s.consistency() 
 
   const get = await bob.call("ShortFormExpression", "expression", "get_by_author", {"author": alice.instance('ShortFormExpression').agentAddress, page_size: 10, page_number: 0})
+  t.deepEqual(get.hasOwnProperty("Ok"), true)
+  t.deepEqual(get.Ok.length, 1)
+})
+
+orchestrator.registerScenario("test send and receive private", async (s, t) => {
+  const {alice, bob} = await s.players({alice: conductorConfig, bob: conductorConfig}, true)
+  await s.consistency() 
+
+  const send = await alice.call("ShortFormExpression", "expression", "send_private", {to: bob.instance('ShortFormExpression').agentAddress, content : JSON.stringify({background: ["bg1", "bg2"], body: "Test Private P2P ShortForm Expression"})})
+  t.deepEqual(result.hasOwnProperty("Ok"), true)
+  await s.consistency() 
+
+  const get_inbox = await bob.call("ShortFormExpression", "expression", "inbox", {from: null, page_size: 10, page_number: 0})
   t.deepEqual(get.hasOwnProperty("Ok"), true)
   t.deepEqual(get.Ok.length, 1)
 })
