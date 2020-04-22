@@ -42,6 +42,10 @@ const conductorConfig = Config.gen(
           rules: [{ exclude: true, pattern: ".*" }]
       }
     },
+    network: {
+      type: 'sim2h',
+      sim2h_url: 'ws://localhost:9000'
+    }
   }
 )
 
