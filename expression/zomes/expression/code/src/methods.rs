@@ -5,13 +5,14 @@ use hdk::{
     holochain_persistence_api::hash::HashString,
     prelude::{
         GetEntryOptions, GetEntryResultType, GetLinksOptions, LinkMatch, Pagination,
-        SizePagination, StatusRequestKind,
+        QueryArgsOptions, QueryResult, SizePagination, StatusRequestKind,
     },
     serde_json::json,
     AGENT_ADDRESS, DNA_ADDRESS,
 };
+use std::convert::TryFrom;
 
-use crate::{Expression, ExpressionDao, ShortFormExpression};
+use crate::{Expression, ExpressionDao, ShortFormExpression, ShortFormExpressionWithSender};
 
 impl ExpressionDao for Expression {
     /// Create an expression and link it to yourself publicly with optional dna_address pointing to
@@ -133,43 +134,67 @@ impl ExpressionDao for Expression {
         page_size: usize,
         page_number: usize,
     ) -> ZomeApiResult<Vec<Expression>> {
-        let links = hdk::get_links_result(
-            &AGENT_ADDRESS,
-            LinkMatch::Exactly("inbox"),
-            from.map(String::from)
-                .as_ref()
-                .map_or(LinkMatch::Any, |from| LinkMatch::Exactly(from.as_ref())),
-            GetLinksOptions {
-                status_request: Default::default(),
-                headers: false,
-                timeout: Default::default(),
-                pagination: Some(Pagination::Size(SizePagination {
-                    page_number: page_number,
-                    page_size: page_size,
-                })),
-                sort_order: None,
-            },
-            GetEntryOptions {
-                status_request: StatusRequestKind::default(),
-                entry: true,
-                headers: true,
-                timeout: Default::default(),
-            },
-        )?;
-
-        Ok(links
-            .into_iter()
-            .map(|link| match link?.result {
-                GetEntryResultType::Single(result) => Ok(Expression {
-                    entry: result.entry.ok_or(ZomeApiError::Internal(String::from(
-                        "Expected entry on link from identity",
-                    )))?,
-                    headers: result.headers,
-                    expression_dna: HashString::from(DNA_ADDRESS.to_string()),
-                }),
-                _ => panic!("Should not hit this, right?"),
-            })
-            .collect::<ZomeApiResult<Vec<Expression>>>()?)
+        Ok(match from {
+            Some(address) => {
+                match hdk::query_result(
+                    "private_shortform_expression".into(),
+                    QueryArgsOptions {
+                        start: page_number,
+                        limit: page_size,
+                        headers: true,
+                        entries: true,
+                    },
+                )? {
+                    QueryResult::HeadersWithEntries(results) => {
+                        results
+                            .into_iter()
+                            .map(|results| {
+                                (results.0, {
+                                    match results.1 {
+                                        Entry::App(_type, value) => {
+                                            ShortFormExpressionWithSender::try_from(value)
+                                                .expect("Entry could not be deserialized into a ShortFormExpressionWithSender")
+                                        }
+                                        _ => panic!("not reachable"),
+                                    }
+                                })
+                            })
+                            .filter(|i| i.1.sender == address)
+                            .map(|results| Expression {
+                                entry: Entry::App(
+                                    "private_shortform_expression".into(),
+                                    results.1.into(),
+                                ),
+                                headers: vec![results.0],
+                                expression_dna: HashString::from(DNA_ADDRESS.to_string()),
+                            })
+                            .collect::<Vec<_>>()
+                    }
+                    _ => panic!("Should not hit this"),
+                }
+            }
+            None => {
+                match hdk::query_result(
+                    "private_shortform_expression".into(),
+                    QueryArgsOptions {
+                        start: page_number,
+                        limit: page_size,
+                        headers: true,
+                        entries: true,
+                    },
+                )? {
+                    QueryResult::HeadersWithEntries(results) => results
+                        .into_iter()
+                        .map(|result| Expression {
+                            entry: result.1,
+                            headers: vec![result.0],
+                            expression_dna: HashString::from(DNA_ADDRESS.to_string()),
+                        })
+                        .collect(),
+                    _ => panic!("Should not hit this"),
+                }
+            }
+        })
     }
 }
 
@@ -179,10 +204,18 @@ pub fn handle_receive(from: Address, msg_json: String) -> String {
         "msg_type": "response",
         "body": match expression {
             Ok(message) => {
+                let message = ShortFormExpressionWithSender {
+                    background: message.background,
+                    body: message.body,
+                    sender: from.clone()
+                };
                 // Some validation of payload here?
                 let expression_entry = Entry::App("private_shortform_expression".into(), message.into()); 
-                match hdk::utils::commit_and_link(&expression_entry, &AGENT_ADDRESS, "inbox", &from.to_string()) {
-                    Ok(_result) => String::from("success"),
+                match hdk::commit_entry(&expression_entry) {
+                    Ok(address) => match hdk::link_entries(&AGENT_ADDRESS, &address, "inbox", &from.to_string()) {
+                        Ok(_result) => String::from("success"),
+                        Err(err) => format!("error: {}", err)
+                    },
                     Err(err) => format!("error: {}", err)
                 }
             },

@@ -56,6 +56,14 @@ pub struct ShortFormExpression {
     body: String,
 }
 
+/// Expression data this DNA is hosting
+#[derive(Serialize, Deserialize, Debug, DefaultJson, Clone)]
+pub struct ShortFormExpressionWithSender {
+    background: Vec<String>,
+    body: String,
+    sender: Address,
+}
+
 /// A holochain expression
 #[derive(Serialize, Deserialize, Debug, DefaultJson, Clone)]
 pub struct Expression {
@@ -79,7 +87,7 @@ pub mod shortform_expression {
             validation: | _validation_data: hdk::EntryValidationData<ShortFormExpression>| {
                 Ok(())
             },
-            
+
             links: [
                 from!(
                     "%agent_id",
@@ -105,7 +113,7 @@ pub mod shortform_expression {
                 hdk::ValidationPackageDefinition::Entry
             },
 
-            validation: | _validation_data: hdk::EntryValidationData<ShortFormExpression>| {
+            validation: | _validation_data: hdk::EntryValidationData<ShortFormExpressionWithSender>| {
                 Ok(())
             },
 
