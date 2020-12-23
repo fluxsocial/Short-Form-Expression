@@ -1,0 +1,19 @@
+[package]
+name = "shortform_expression"
+version = "0.1.0"
+authors = ["jdeepee <joshuadparkin@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+name = "shortform_expression"
+
+[dependencies]
+derive_more = "0"
+serde = "1"
+serde_json = "1"
+
+hdk3 = "0"
+hc_utils = "0"
+
+meta-traits = { path = "../../../Holochain-Trait-Definitions" }

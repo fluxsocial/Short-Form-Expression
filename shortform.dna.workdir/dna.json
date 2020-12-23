@@ -1,0 +1,11 @@
+{
+    "name": "shortform-expresion",
+    "uuid": "",
+    "properties": null,
+    "zomes": {
+      "shortform": {
+        "wasm_path": "../target/wasm32-unknown-unknown/release/shortform_expression.wasm"
+      }
+    }
+  }
+  
