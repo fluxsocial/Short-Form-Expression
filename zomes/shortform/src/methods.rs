@@ -13,7 +13,8 @@ impl ExpressionDao for ExpressionDNA {
             .map_err(|_| err("Could not serialized content into ShortForm expression type"))?;
         let expression_hash = hash_entry(&expression)?;
         create_entry(&expression)?;
-
+        let expression = get(expression_hash, GetOptions::default())?
+        .ok_or(err("Could not get entry after commit"))?;
         //Here we probably want to do some path stuff where we get all their pub keys and make sure they are linked together so getting by author later
         //can use all used agent pub keys
         create_link(
@@ -22,10 +23,12 @@ impl ExpressionDao for ExpressionDNA {
             LinkTag::new("expression".as_bytes().to_owned()),
         )?;
 
+        let timestamp = expression.header().timestamp();
         Ok(Expression {
             expression_dna: zome_info()?.dna_hash,
-            expression: get(expression_hash, GetOptions::default())?
-                .ok_or(err("Could not get entry after commit"))?,
+            created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
+            expression: expression,
+            creator: agent_info()?.agent_latest_pubkey,
         })
     }
 
@@ -38,7 +41,7 @@ impl ExpressionDao for ExpressionDNA {
     ) -> ExternResult<Vec<Expression>> {
         //TODO: try and get all pub keys that this target agent has used and get all links from each pub key
         let links = get_links(
-            author.into(),
+            author.clone().into(),
             Some(LinkTag::new("expression".as_bytes().to_owned())),
         )
         .map_err(|_| err("Could not get links on author"))?;
@@ -47,10 +50,14 @@ impl ExpressionDao for ExpressionDNA {
             .into_inner()
             .into_iter()
             .map(|link| {
+                let expression = get(link.target, GetOptions::default())?
+                        .ok_or(err("Could not get entry after commit"))?;
+                let timestamp = expression.header().timestamp();
                 Ok(Expression {
                     expression_dna: dna_hash.clone(),
-                    expression: get(link.target, GetOptions::default())?
-                        .ok_or(err("Could not get entry after commit"))?,
+                    created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
+                    expression: expression,
+                    creator: author.clone()
                 })
             })
             .collect::<Result<Vec<Expression>, HdkError>>()?)
@@ -59,10 +66,15 @@ impl ExpressionDao for ExpressionDNA {
     fn get_expression_by_address(address: AnyDhtHash) -> ExternResult<Option<Expression>> {
         let expression = get(address, GetOptions::default())?;
         match expression {
-            Some(expression) => Ok(Some(Expression {
-                expression_dna: zome_info()?.dna_hash,
-                expression: expression,
-            })),
+            Some(expression) => {
+                    let timestamp = expression.header().timestamp();
+                    Ok(Some(Expression {
+                        expression_dna: zome_info()?.dna_hash,
+                        creator: expression.header().author().to_owned(),
+                        created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
+                        expression: expression,
+                }))
+            },
             None => Ok(None),
         }
     }
@@ -110,19 +122,25 @@ impl ExpressionDao for ExpressionDNA {
         match from {
             Some(ident) => {
                 let links = get_links(
-                    hash_entry(&PrivateAgent(ident.into()))?,
+                    hash_entry(&PrivateAgent(ident.clone().into()))?,
                     Some(LinkTag::new("expression".as_bytes().to_owned())),
                 )
                 .map_err(|_| err("Could not get links on author"))?;
                 let dna_hash = zome_info()?.dna_hash;
+                
                 Ok(links
                     .into_inner()
                     .into_iter()
                     .map(|link| {
+                        let expression = get(link.target, GetOptions::default())?
+                            .ok_or(err("Could not get entry after commit"))?;
+                        let timestamp = expression.header().timestamp();
                         Ok(Expression {
                             expression_dna: dna_hash.clone(),
                             expression: get(link.target, GetOptions::default())?
                                 .ok_or(err("Could not get entry after commit"))?,
+                            created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
+                            creator: ident.clone()
                         })
                     })
                     .collect::<Result<Vec<Expression>, HdkError>>()?)
@@ -138,9 +156,12 @@ impl ExpressionDao for ExpressionDNA {
                     .0
                     .into_iter()
                     .map(|elem| {
+                        let timestamp = elem.header().timestamp();
                         Ok(Expression {
                             expression_dna: dna_hash.clone(),
-                            expression: elem,
+                            creator: elem.header().author().to_owned(),
+                            created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
+                            expression: elem
                         })
                     })
                     .collect::<Result<Vec<Expression>, HdkError>>()?)

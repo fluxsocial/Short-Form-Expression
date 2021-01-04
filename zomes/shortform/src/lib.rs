@@ -41,7 +41,6 @@ entry_defs![
 /// Run function where zome is init'd by agent. This adds open cap grant for recv_private_expression function
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
-    println!("Init function is getting run\n\n\n\n\n");
     // grant unrestricted access to accept_cap_claim so other agents can send us claims
     let mut functions: GrantedFunctions = HashSet::new();
     functions.insert((zome_info()?.zome_name, "recv_private_expression".into()));

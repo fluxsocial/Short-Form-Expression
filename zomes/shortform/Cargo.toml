@@ -12,6 +12,7 @@ name = "shortform_expression"
 derive_more = "0"
 serde = "1"
 serde_json = "1"
+chrono = { version = "*", features = ["serde"] }
 
 hdk3 = "0"
 hc_utils = "0"

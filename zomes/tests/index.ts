@@ -75,7 +75,8 @@ orchestrator.registerScenario("test send and receive private", async (s, t) => {
   t.deepEqual(get_inbox.length, 1);
 
   const get_inbox_from = await bob_happ.cells[0].call("shortform", "inbox", {from: alice_happ.agent, page_size: 10, page_number: 0})
-  console.log("get inbox from", get_inbox_from);
+  console.log("get inbox from", get_inbox_from[0].expression.entry)
+  console.log("get inbox from", get_inbox_from[0].expression.header);
   t.deepEqual(get_inbox_from.length, 1)
 })
 
