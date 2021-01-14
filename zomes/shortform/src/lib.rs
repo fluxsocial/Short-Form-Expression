@@ -1,6 +1,5 @@
 use hc_utils::WrappedAgentPubKey;
 use hdk3::prelude::*;
-use meta_traits::ExpressionDao;
 
 mod inputs;
 mod methods;
@@ -13,26 +12,40 @@ use outputs::*;
 /// Expression data this DNA is "hosting"
 #[hdk_entry(id = "shortform_expression", visibility = "public")]
 pub struct ShortFormExpression {
-    background: Vec<String>,
-    body: String,
+    data: ShortFormExpressionData,
+    author: Agent,
+    timestamp: String,
+    proof: ExpressionProof,
 }
 
 /// Expression data this DNA is "hosting". This variant is private and will be used for p2p messaging.
 #[hdk_entry(id = "private_shortform_expression", visibility = "private")]
 pub struct PrivateShortFormExpression {
+    data: ShortFormExpressionData,
+    author: Agent,
+    timestamp: String,
+    proof: ExpressionProof,
+}
+
+#[derive(Serialize, Deserialize, Clone, SerializedBytes)]
+pub struct ShortFormExpressionData {
     background: Vec<String>,
     body: String,
 }
 
-#[hdk_entry(id = "private_agent", visibility = "private")]
-pub struct PrivateAgent(AgentPubKey);
+#[hdk_entry(id = "acai_agent", visibility = "public")]
+pub struct AcaiAgent(pub String);
+
+#[hdk_entry(id = "private_acai_agent", visibility = "private")]
+pub struct PrivateAcaiAgent(pub String);
 
 pub struct ExpressionDNA();
 
 entry_defs![
     ShortFormExpression::entry_def(),
     PrivateShortFormExpression::entry_def(),
-    PrivateAgent::entry_def(),
+    AcaiAgent::entry_def(),
+    PrivateAcaiAgent::entry_def(),
     Path::entry_def()
 ];
 
@@ -55,8 +68,8 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 }
 
 #[hdk_extern]
-pub fn recv_private_expression(create_data: CreatePrivateExpression) -> ExternResult<()> {
-    methods::recv_private_expression(create_data)
+pub fn recv_private_expression(create_data: PrivateShortFormExpression) -> ExternResult<()> {
+    ExpressionDNA::recv_private_expression(create_data)
 }
 
 /// Get agent information
@@ -67,13 +80,10 @@ pub fn who_am_i(_: ()) -> ExternResult<WrappedAgentPubKey> {
     Ok(WrappedAgentPubKey(agent_info.agent_initial_pubkey))
 }
 
-/// Create an expression and link it to yourself publicly with optional dna_address pointing to
-/// dna that should ideally be used for linking any comments to this expression
+/// Create an expression and link it to yourself publicly
 #[hdk_extern]
 pub fn create_public_expression(create_data: CreateExpression) -> ExternResult<ExpressionResponse> {
-    Ok(ExpressionResponse(ExpressionDNA::create_public_expression(
-        create_data.content,
-    )?))
+    Ok(ExpressionDNA::create_public_expression(create_data)?)
 }
 
 /// Get expressions authored by a given Agent/Identity
@@ -95,17 +105,17 @@ pub fn get_expression_by_address(address: AnyDhtHash) -> ExternResult<MaybeExpre
 
 /// Send an expression to someone privately p2p
 #[hdk_extern]
-pub fn send_private(send_data: SendPrivate) -> ExternResult<StringResponse> {
-    Ok(StringResponse(ExpressionDNA::send_private(
+pub fn send_private(send_data: SendPrivate) -> ExternResult<PrivateShortFormExpression> {
+    Ok(ExpressionDNA::send_private(
         send_data.to,
-        send_data.content,
-    )?))
+        send_data.expression,
+    )?)
 }
 
 /// Get private expressions sent to you optionally filtered by sender address
 #[hdk_extern]
-pub fn inbox(data: Inbox) -> ExternResult<ManyExpressionResponse> {
-    Ok(ManyExpressionResponse(ExpressionDNA::inbox(
+pub fn inbox(data: Inbox) -> ExternResult<ManyPrivateExpressionResponse> {
+    Ok(ManyPrivateExpressionResponse(ExpressionDNA::inbox(
         data.from,
         data.page_size,
         data.page_number,

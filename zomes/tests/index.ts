@@ -42,19 +42,20 @@ orchestrator.registerScenario("create and get public expression", async (s, t) =
   ] = await bob.installAgentsHapps(installation)
 
   //Create a public expression from alice
-  const create_exp = await alice_happ.cells[0].call("shortform", "create_public_expression", {content: JSON.stringify({background: [], body: "A test expression"})})
+  const create_exp = await alice_happ.cells[0].call("shortform", "create_public_expression", 
+    {data: JSON.stringify({background: [], body: "A test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: "ISO8601", proof: {key: "key", signature: "sig"}})
   console.log("Created expression", create_exp);
-  t.notEqual(create_exp.expression, undefined);
+  t.notEqual(create_exp.expression_data, undefined);
 
   //Get agent alice expressions from bob
-  const get_exps = await bob_happ.cells[0].call("shortform", "get_by_author", {author: alice_happ.agent, page_number: 0, page_size: 0})
+  const get_exps = await bob_happ.cells[0].call("shortform", "get_by_author", {author: "did://alice", page_number: 0, page_size: 0})
   console.log("Got expressions for alice: ", get_exps);
   t.equal(get_exps.length, 1);
 
   //Try and get the expression by address
-  const get_exp = await alice_happ.cells[0].call("shortform", "get_expression_by_address", create_exp.expression.signed_header.header.hash)
+  const get_exp = await alice_happ.cells[0].call("shortform", "get_expression_by_address", create_exp.holochain_data.element.signed_header.header.hash)
   console.log("Got exp by address", get_exp);
-  t.notEqual(get_exp.expression, undefined);
+  t.notEqual(get_exp.expression_data, undefined);
 })
 
 orchestrator.registerScenario("test send and receive private", async (s, t) => {
@@ -66,7 +67,7 @@ orchestrator.registerScenario("test send and receive private", async (s, t) => {
     [bob_happ],
   ] = await bob.installAgentsHapps(installation)
 
-  const send = await alice_happ.cells[0].call("shortform", "send_private", {to: bob_happ.agent, content: JSON.stringify({background: ["bg1", "bg2"], body: "Test Private P2P ShortForm Expression"})})
+  const send = await alice_happ.cells[0].call("shortform", "send_private", {to: bob_happ.agent, expression: {data: JSON.stringify({background: [], body: "A private test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: "ISO8601", proof: {key: "key", signature: "sig"}}})
   console.log("Created expression", send);
   t.ok(send);
 
@@ -74,9 +75,7 @@ orchestrator.registerScenario("test send and receive private", async (s, t) => {
   console.log("get inbox", get_inbox);
   t.deepEqual(get_inbox.length, 1);
 
-  const get_inbox_from = await bob_happ.cells[0].call("shortform", "inbox", {from: alice_happ.agent, page_size: 10, page_number: 0})
-  console.log("get inbox from", get_inbox_from[0].expression.entry)
-  console.log("get inbox from", get_inbox_from[0].expression.header);
+  const get_inbox_from = await bob_happ.cells[0].call("shortform", "inbox", {from: "did://alice", page_size: 10, page_number: 0})
   t.deepEqual(get_inbox_from.length, 1)
 })
 

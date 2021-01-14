@@ -1,93 +1,124 @@
-use hdk3::host_fn::zome_info::zome_info;
 use hdk3::prelude::*;
-use meta_traits::{Expression, ExpressionDao, Identity};
 
-use crate::{inputs::CreatePrivateExpression, utils::err};
-use crate::{ExpressionDNA, PrivateAgent, PrivateShortFormExpression, ShortFormExpression};
+use crate::{inputs::CreateExpression, outputs::HolochainData, utils::err};
+use crate::{
+    AcaiAgent, ExpressionDNA, ExpressionResponse, PrivateAcaiAgent, PrivateExpressionResponse,
+    PrivateShortFormExpression, ShortFormExpression,
+};
 
-impl ExpressionDao for ExpressionDNA {
+impl ExpressionDNA {
     /// Create an expression and link it to yourself publicly
-    fn create_public_expression(content: String) -> ExternResult<Expression> {
+    pub fn create_public_expression(content: CreateExpression) -> ExternResult<ExpressionResponse> {
         // Serialize data to check its valid and prepare for entry into source chain
-        let expression: ShortFormExpression = serde_json::from_str(&content)
-            .map_err(|_| err("Could not serialized content into ShortForm expression type"))?;
+        let expression = ShortFormExpression::try_from(content)?;
         let expression_hash = hash_entry(&expression)?;
         create_entry(&expression)?;
-        let expression = get(expression_hash, GetOptions::default())?
-        .ok_or(err("Could not get entry after commit"))?;
-        //Here we probably want to do some path stuff where we get all their pub keys and make sure they are linked together so getting by author later
-        //can use all used agent pub keys
-        create_link(
-            agent_info()?.agent_latest_pubkey.into(),
-            expression_hash.clone(),
-            LinkTag::new("expression".as_bytes().to_owned()),
-        )?;
 
-        let timestamp = expression.header().timestamp();
-        Ok(Expression {
-            expression_dna: zome_info()?.dna_hash,
-            created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
-            expression: expression,
-            creator: agent_info()?.agent_latest_pubkey,
+        let acai_agent = AcaiAgent(expression.author.did.clone());
+        let acai_agent_hash = hash_entry(&acai_agent)?;
+        create_entry(&acai_agent)?;
+
+        //Here we will want to use chunking mixin
+        create_link(acai_agent_hash, expression_hash.clone(), LinkTag::new("expression"))?;
+
+        let expression_element = get(expression_hash, GetOptions::default())?
+            .ok_or(err("Could not get entry after commit"))?;
+        let timestamp = expression_element.header().timestamp();
+
+        Ok(ExpressionResponse {
+            expression_data: expression,
+            holochain_data: HolochainData {
+                element: expression_element,
+                expression_dna: zome_info()?.dna_hash,
+                creator: agent_info()?.agent_latest_pubkey,
+                created_at: chrono::DateTime::from_utc(
+                    chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
+                    chrono::Utc,
+                ),
+            },
         })
     }
 
     /// Get expressions authored by a given Agent/Identity
-    fn get_by_author(
-        author: Identity,
-        //For now we are ignoring these page values as pagination is not implemented on get_links. But perhaps this could be used in some chunking pattern?
+    pub fn get_by_author(
+        author: String,
+        //These pages can be input into chunking mixin for the future
         _page_size: usize,
         _page_number: usize,
-    ) -> ExternResult<Vec<Expression>> {
-        //TODO: try and get all pub keys that this target agent has used and get all links from each pub key
+    ) -> ExternResult<Vec<ExpressionResponse>> {
         let links = get_links(
-            author.clone().into(),
-            Some(LinkTag::new("expression".as_bytes().to_owned())),
+            hash_entry(&AcaiAgent(author))?,
+            Some(LinkTag::new("expression")),
         )
         .map_err(|_| err("Could not get links on author"))?;
-        let dna_hash = zome_info()?.dna_hash;
+
         Ok(links
             .into_inner()
             .into_iter()
             .map(|link| {
-                let expression = get(link.target, GetOptions::default())?
-                        .ok_or(err("Could not get entry after commit"))?;
-                let timestamp = expression.header().timestamp();
-                Ok(Expression {
-                    expression_dna: dna_hash.clone(),
-                    created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
-                    expression: expression,
-                    creator: author.clone()
+                let expression_element = get(link.target, GetOptions::default())?
+                    .ok_or(err("Could not get entry after commit"))?;
+                let timestamp = expression_element.header().timestamp();
+                let exp_data: ShortFormExpression = expression_element
+                    .entry()
+                    .to_app_option()?
+                    .ok_or(HdkError::Wasm(WasmError::Zome(String::from(
+                        "Could not deserialize link expression data into ShortFormExpression",
+                    ))))?;
+                Ok(ExpressionResponse {
+                    expression_data: exp_data,
+                    holochain_data: HolochainData {
+                        element: expression_element,
+                        expression_dna: zome_info()?.dna_hash,
+                        creator: agent_info()?.agent_latest_pubkey,
+                        created_at: chrono::DateTime::from_utc(
+                            chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
+                            chrono::Utc,
+                        ),
+                    },
                 })
             })
-            .collect::<Result<Vec<Expression>, HdkError>>()?)
+            .collect::<Result<Vec<ExpressionResponse>, HdkError>>()?)
     }
 
-    fn get_expression_by_address(address: AnyDhtHash) -> ExternResult<Option<Expression>> {
+    pub fn get_expression_by_address(
+        address: AnyDhtHash,
+    ) -> ExternResult<Option<ExpressionResponse>> {
         let expression = get(address, GetOptions::default())?;
         match expression {
-            Some(expression) => {
-                    let timestamp = expression.header().timestamp();
-                    Ok(Some(Expression {
+            Some(expression_element) => {
+                let exp_data: ShortFormExpression = expression_element
+                    .entry()
+                    .to_app_option()?
+                    .ok_or(HdkError::Wasm(WasmError::Zome(String::from(
+                        "Could not deserialize link expression data into ShortFormExpression",
+                    ))))?;
+                let timestamp = expression_element.header().timestamp();
+                Ok(Some(ExpressionResponse {
+                    expression_data: exp_data,
+                    holochain_data: HolochainData {
+                        element: expression_element,
                         expression_dna: zome_info()?.dna_hash,
-                        creator: expression.header().author().to_owned(),
-                        created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
-                        expression: expression,
+                        creator: agent_info()?.agent_latest_pubkey,
+                        created_at: chrono::DateTime::from_utc(
+                            chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
+                            chrono::Utc,
+                        ),
+                    },
                 }))
-            },
+            }
             None => Ok(None),
         }
     }
 
     /// Send an expression to someone privately p2p
-    fn send_private(to: Identity, content: String) -> ExternResult<String> {
+    pub fn send_private(
+        to: AgentPubKey,
+        expression: CreateExpression,
+    ) -> ExternResult<PrivateShortFormExpression> {
         // Serialize data to check its valid
-        let _expression: PrivateShortFormExpression = serde_json::from_str(&content)
-            .map_err(|_| err("Could not serialized content into ShortForm expression type"))?;
-        let create_exp_data = CreatePrivateExpression {
-            content: content.clone(),
-            sender: agent_info()?.agent_latest_pubkey,
-        };
+        let expression = ShortFormExpression::try_from(expression)?;
+        let expression = PrivateShortFormExpression::from(expression);
 
         //Call the users remote zome
         //TODO here we want some pattern better than this; only having this succeed when agent is online is not great
@@ -98,7 +129,7 @@ impl ExpressionDao for ExpressionDNA {
             ZomeName::from("shortform"),
             FunctionName::from("recv_private_expression"),
             None,
-            &create_exp_data,
+            &expression,
         )
         .map_err(|error| match error {
             HdkError::UnauthorizedZomeCall(_, _, _, _) => {
@@ -110,83 +141,99 @@ impl ExpressionDao for ExpressionDNA {
             _ => err(format!("{:?}", error).as_ref()),
         })?;
 
-        Ok(content)
+        Ok(expression)
     }
 
     /// Get private expressions sent to you optionally filtered by sender address
-    fn inbox(
-        from: Option<Identity>,
+    pub fn inbox(
+        from: Option<String>,
         _page_size: usize,
         _page_number: usize,
-    ) -> ExternResult<Vec<Expression>> {
+    ) -> ExternResult<Vec<PrivateExpressionResponse>> {
         match from {
             Some(ident) => {
                 let links = get_links(
-                    hash_entry(&PrivateAgent(ident.clone().into()))?,
-                    Some(LinkTag::new("expression".as_bytes().to_owned())),
-                )
-                .map_err(|_| err("Could not get links on author"))?;
-                let dna_hash = zome_info()?.dna_hash;
-                
+                    hash_entry(&PrivateAcaiAgent(ident.clone().into()))?,
+                    Some(LinkTag::new("expression")),
+                )?;
+
                 Ok(links
                     .into_inner()
                     .into_iter()
                     .map(|link| {
-                        let expression = get(link.target, GetOptions::default())?
+                        let expression_element = get(link.target, GetOptions::default())?
                             .ok_or(err("Could not get entry after commit"))?;
-                        let timestamp = expression.header().timestamp();
-                        Ok(Expression {
-                            expression_dna: dna_hash.clone(),
-                            expression: get(link.target, GetOptions::default())?
-                                .ok_or(err("Could not get entry after commit"))?,
-                            created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
-                            creator: ident.clone()
+                        let timestamp = expression_element.header().timestamp();
+                        let exp_data: PrivateShortFormExpression = expression_element
+                            .entry()
+                            .to_app_option()?
+                            .ok_or(HdkError::Wasm(WasmError::Zome(String::from(
+                                "Could not deserialize link expression data into PrivateShortFormExpression",
+                            ))))?;
+                        Ok(PrivateExpressionResponse {
+                            expression_data: exp_data,
+                            holochain_data: HolochainData {
+                                element: expression_element,
+                                expression_dna: zome_info()?.dna_hash,
+                                creator: agent_info()?.agent_latest_pubkey,
+                                created_at: chrono::DateTime::from_utc(
+                                    chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
+                                    chrono::Utc,
+                                ),
+                            },
                         })
                     })
-                    .collect::<Result<Vec<Expression>, HdkError>>()?)
+                    .collect::<Result<Vec<PrivateExpressionResponse>, HdkError>>()?)
             }
             None => {
                 let priv_exp_entry_def = PrivateShortFormExpression::entry_def();
                 //Not sure about the entrytype here...
                 let query = query(QueryFilter::new().entry_type(EntryType::App(
                     AppEntryType::new(1.into(), 0.into(), priv_exp_entry_def.visibility),
-                )))?;
-                let dna_hash = zome_info()?.dna_hash;
+                )).include_entries(true))?;
                 Ok(query
                     .0
                     .into_iter()
-                    .map(|elem| {
-                        let timestamp = elem.header().timestamp();
-                        Ok(Expression {
-                            expression_dna: dna_hash.clone(),
-                            creator: elem.header().author().to_owned(),
-                            created_at: chrono::DateTime::from(chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1), chrono::Utc),
-                            expression: elem
+                    .map(|expression_element| {
+                        let exp_data: PrivateShortFormExpression = expression_element
+                            .entry()
+                            .to_app_option()?
+                            .ok_or(HdkError::Wasm(WasmError::Zome(String::from(
+                                "Could not deserialize local expression data into PrivateShortFormExpression",
+                            ))))?;
+                        let timestamp = expression_element.header().timestamp();
+                        Ok(PrivateExpressionResponse {
+                            expression_data: exp_data,
+                            holochain_data: HolochainData {
+                                element: expression_element,
+                                expression_dna: zome_info()?.dna_hash,
+                                creator: agent_info()?.agent_latest_pubkey,
+                                created_at: chrono::DateTime::from_utc(
+                                    chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
+                                    chrono::Utc,
+                                ),
+                            },
                         })
                     })
-                    .collect::<Result<Vec<Expression>, HdkError>>()?)
+                    .collect::<Result<Vec<PrivateExpressionResponse>, HdkError>>()?)
             }
         }
     }
-}
 
-pub fn recv_private_expression(create_data: CreatePrivateExpression) -> ExternResult<()> {
-    let agent_entry = PrivateAgent(create_data.sender);
-    let agent_entry_hash = hash_entry(&agent_entry)?;
-    create_entry(&agent_entry)?;
+    pub fn recv_private_expression(create_data: PrivateShortFormExpression) -> ExternResult<()> {
+        let agent_entry = PrivateAcaiAgent(create_data.author.did.clone());
+        let agent_entry_hash = hash_entry(&agent_entry)?;
+        create_entry(&agent_entry)?;
 
-    // Serialize data to check its valid and prepare for entry into source chain
-    let expression_entry: PrivateShortFormExpression =
-        serde_json::from_str(&create_data.content)
-            .map_err(|_| err("Could not serialized content into ShortForm expression type"))?;
-    let expression_entry_hash = hash_entry(&expression_entry)?;
-    create_entry(&expression_entry)?;
+        let expression_entry_hash = hash_entry(&create_data)?;
+        create_entry(&create_data)?;
 
-    create_link(
-        agent_entry_hash,
-        expression_entry_hash,
-        LinkTag::from("expression".as_bytes().to_owned()),
-    )?;
+        create_link(
+            agent_entry_hash,
+            expression_entry_hash,
+            LinkTag::new("expression"),
+        )?;
 
-    Ok(())
+        Ok(())
+    }
 }

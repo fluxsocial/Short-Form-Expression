@@ -1,18 +1,45 @@
 use hc_utils::WrappedDnaHash;
 use hdk3::prelude::*;
-use meta_traits::Expression;
+use holo_hash::DnaHash;
+
+use crate::{PrivateShortFormExpression, ShortFormExpression};
 
 #[derive(SerializedBytes, Serialize, Deserialize)]
-pub struct ExpressionResponse(pub Expression);
+pub struct ExpressionResponse {
+    //#[serde(flatten)]
+    pub expression_data: ShortFormExpression,
+    pub holochain_data: HolochainData,
+}
 
 #[derive(SerializedBytes, Serialize, Deserialize)]
-pub struct ManyExpressionResponse(pub Vec<Expression>);
+pub struct PrivateExpressionResponse {
+    //#[serde(flatten)]
+    pub expression_data: PrivateShortFormExpression,
+    pub holochain_data: HolochainData,
+}
 
 #[derive(SerializedBytes, Serialize, Deserialize)]
-pub struct MaybeExpression(pub Option<Expression>);
+pub struct HolochainData {
+    pub element: Element,
+    pub expression_dna: DnaHash,
+    pub creator: AgentPubKey,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes)]
-pub struct StringResponse(pub String);
+// #[derive(SerializedBytes, Serialize, Deserialize)]
+// pub struct WrappedExpressionResponse(pub ExpressionResponse);
+
+#[derive(SerializedBytes, Serialize, Deserialize)]
+pub struct ManyExpressionResponse(pub Vec<ExpressionResponse>);
+
+#[derive(SerializedBytes, Serialize, Deserialize)]
+pub struct ManyPrivateExpressionResponse(pub Vec<PrivateExpressionResponse>);
+
+#[derive(SerializedBytes, Serialize, Deserialize)]
+pub struct MaybeExpression(pub Option<ExpressionResponse>);
+
+// #[derive(SerializedBytes, Serialize, Deserialize)]
+// pub struct WrappedPrivateExpressionResponse(pub PrivateShortFormExpression);
 
 #[derive(Serialize, Deserialize, SerializedBytes)]
 pub struct ManyDhtHash(pub Vec<WrappedDnaHash>);

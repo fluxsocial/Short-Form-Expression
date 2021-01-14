@@ -288,18 +288,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "meta-traits"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "hdk3",
- "holo_hash",
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
 name = "num-integer"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -528,7 +516,7 @@ dependencies = [
  "derive_more",
  "hc_utils",
  "hdk3",
- "meta-traits",
+ "holo_hash",
  "serde",
  "serde_json",
 ]

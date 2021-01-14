@@ -16,5 +16,4 @@ chrono = { version = "*", features = ["serde"] }
 
 hdk3 = "0"
 hc_utils = "0"
-
-meta-traits = { path = "../../../Holochain-Trait-Definitions" }
+holo_hash = "0"
