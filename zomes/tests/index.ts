@@ -14,11 +14,11 @@ const network = {
     }],
     bootstrap_service: "https://bootstrap.holo.host"
 };
-const conductorConfig = Config.gen({network});
-//const conductorConfig = Config.gen();
+//const conductorConfig = Config.gen({network});
+const conductorConfig = Config.gen();
 
 // Construct proper paths for your DNAs
-const shortForm = path.join(__dirname, '../../shortform.dna.gz')
+const shortForm = path.join(__dirname, '../../workdir/shortform-expression.dna')
 
 // create an InstallAgentsHapps array with your DNAs to tell tryorama what
 // to install into the conductor.
@@ -32,48 +32,31 @@ const installation: InstallAgentsHapps = [
 
 const orchestrator = new Orchestrator()
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 orchestrator.registerScenario("create and get public expression", async (s, t) => {
   const [alice, bob] = await s.players([conductorConfig, conductorConfig])
-  const req: InstallAppRequest = {
-    installed_app_id: `my_app:1234`, // my_app with some unique installed id value
-    agent_key: await alice.adminWs().generateAgentPubKey(),
-    dnas: [{
-      path: path.join(__dirname, '../../social-context.dna.gz'),
-      nick: `my_cell_nick`,
-      properties: {
-        "enforce_spam_limit": 20,
-        "max_chunk_interval": 100000,
-        "active_agent_duration_ms": 7200
-      },
-      //membrane_proof: Array.from(msgpack.encode({role:"steward", signature:"..."})),
-    }]
-  };
-  const bobReq: InstallAppRequest = {
-    installed_app_id: `my_app:1234`, // my_app with some unique installed id value
-    agent_key: await alice.adminWs().generateAgentPubKey(),
-    dnas: [{
-      path: path.join(__dirname, '../../social-context.dna.gz'),
-      nick: `my_cell_nick`,
-      properties: {
-        "enforce_spam_limit": 20,
-        "max_chunk_interval": 100000,
-        "active_agent_duration_ms": 7200
-      },
-      //membrane_proof: Array.from(msgpack.encode({role:"steward", signature:"..."})),
-    }]
-  };
-
-  const alice_happ = await alice._installHapp(req)
-  const bob_happ = await bob._installHapp(bobReq)
+  const [[alice_happ]] = await alice.installAgentsHapps(installation)
+  //const [[bob_happ]] = await bob.installAgentsHapps(installation)
 
   //Create a public expression from alice
   const create_exp = await alice_happ.cells[0].call("shortform", "create_public_expression", 
     {data: JSON.stringify({background: [], body: "A test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: "ISO8601", proof: {key: "key", signature: "sig"}})
   console.log("Created expression", create_exp);
   t.notEqual(create_exp.expression_data, undefined);
+  
+  sleep(10000);
+  //Create another time index
+  var dateOffset = (24*60*60*1000) / 2; //12 hr ago
+  var date = new Date();
+  date.setTime(date.getTime() - dateOffset);
 
+  let current = new Date().toISOString();
+  console.log("Getting date", current);
   //Get agent alice expressions from bob
-  const get_exps = await bob_happ.cells[0].call("shortform", "get_by_author", {author: "did://alice", page_number: 0, page_size: 0})
+  const get_exps = await alice_happ.cells[0].call("shortform", "get_by_author", {author: "did://alice", from: date.toISOString(), until: new Date().toISOString()})
   console.log("Got expressions for alice: ", get_exps);
   t.equal(get_exps.length, 1);
 
@@ -85,37 +68,10 @@ orchestrator.registerScenario("create and get public expression", async (s, t) =
 
 orchestrator.registerScenario("test send and receive private", async (s, t) => {
   const [alice, bob] = await s.players([conductorConfig, conductorConfig])
-  const req: InstallAppRequest = {
-    installed_app_id: `my_app:1234`, // my_app with some unique installed id value
-    agent_key: await alice.adminWs().generateAgentPubKey(),
-    dnas: [{
-      path: path.join(__dirname, '../../social-context.dna.gz'),
-      nick: `my_cell_nick`,
-      properties: {
-        "enforce_spam_limit": 20,
-        "max_chunk_interval": 100000,
-        "active_agent_duration_ms": 7200
-      },
-      //membrane_proof: Array.from(msgpack.encode({role:"steward", signature:"..."})),
-    }]
-  };
-  const bobReq: InstallAppRequest = {
-    installed_app_id: `my_app:1234`, // my_app with some unique installed id value
-    agent_key: await alice.adminWs().generateAgentPubKey(),
-    dnas: [{
-      path: path.join(__dirname, '../../social-context.dna.gz'),
-      nick: `my_cell_nick`,
-      properties: {
-        "enforce_spam_limit": 20,
-        "max_chunk_interval": 100000,
-        "active_agent_duration_ms": 7200
-      },
-      //membrane_proof: Array.from(msgpack.encode({role:"steward", signature:"..."})),
-    }]
-  };
+  const [[alice_happ]] = await alice.installAgentsHapps(installation)
+  const [[bob_happ]] = await bob.installAgentsHapps(installation)
 
-  const alice_happ = await alice._installHapp(req)
-  const bob_happ = await bob._installHapp(bobReq)
+  await s.shareAllNodes([alice, bob])
 
   const send = await alice_happ.cells[0].call("shortform", "send_private", {to: bob_happ.agent, expression: {data: JSON.stringify({background: [], body: "A private test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: "ISO8601", proof: {key: "key", signature: "sig"}}})
   console.log("Created expression", send);

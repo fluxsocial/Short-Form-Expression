@@ -12,7 +12,7 @@ name = "shortform_expression"
 derive_more = "0"
 serde = "1"
 serde_json = "1"
-chrono = { version = "*", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 hc_time_index = { path = "../../../time_delimited_indexing" }
 thiserror = "1.0.20"
 
