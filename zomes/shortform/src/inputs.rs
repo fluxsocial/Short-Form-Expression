@@ -9,7 +9,7 @@ use crate::utils::err;
 pub struct CreateExpression {
     pub data: String,
     pub author: Agent,
-    pub timestamp: String,
+    pub timestamp: DateTime<Utc>,
     pub proof: ExpressionProof,
 }
 

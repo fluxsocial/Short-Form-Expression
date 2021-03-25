@@ -43,7 +43,7 @@ orchestrator.registerScenario("create and get public expression", async (s, t) =
 
   //Create a public expression from alice
   const create_exp = await alice_happ.cells[0].call("shortform", "create_public_expression", 
-    {data: JSON.stringify({background: [], body: "A test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: "ISO8601", proof: {key: "key", signature: "sig"}})
+    {data: JSON.stringify({background: [], body: "A test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: new Date().toISOString(), proof: {key: "key", signature: "sig"}})
   console.log("Created expression", create_exp);
   t.notEqual(create_exp.expression_data, undefined);
   
@@ -73,7 +73,7 @@ orchestrator.registerScenario("test send and receive private", async (s, t) => {
 
   await s.shareAllNodes([alice, bob])
 
-  const send = await alice_happ.cells[0].call("shortform", "send_private", {to: bob_happ.agent, expression: {data: JSON.stringify({background: [], body: "A private test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: "ISO8601", proof: {key: "key", signature: "sig"}}})
+  const send = await alice_happ.cells[0].call("shortform", "send_private", {to: bob_happ.agent, expression: {data: JSON.stringify({background: [], body: "A private test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: new Date().toISOString(), proof: {key: "key", signature: "sig"}}})
   console.log("Created expression", send);
   t.ok(send);
 

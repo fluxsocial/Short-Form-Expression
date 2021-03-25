@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use hdk::prelude::*;
 
 mod inputs;
@@ -16,7 +17,7 @@ use outputs::*;
 pub struct ShortFormExpression {
     data: ShortFormExpressionData,
     author: Agent,
-    timestamp: String,
+    timestamp: DateTime<Utc>,
     proof: ExpressionProof,
 }
 
@@ -25,7 +26,7 @@ pub struct ShortFormExpression {
 pub struct PrivateShortFormExpression {
     data: ShortFormExpressionData,
     author: Agent,
-    timestamp: String,
+    timestamp: DateTime<Utc>,
     proof: ExpressionProof,
 }
 
