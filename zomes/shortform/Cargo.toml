@@ -13,7 +13,8 @@ derive_more = "0"
 serde = "1"
 serde_json = "1"
 chrono = { version = "*", features = ["serde"] }
+hc_time_index = { path = "../../../time_delimited_indexing" }
+thiserror = "1.0.20"
 
-hdk3 = "0"
-hc_utils = "0"
-holo_hash = "0"
+hdk = "0.0.100"
+holo_hash = "0.0.2-alpha.1"

@@ -1,10 +1,11 @@
-use hdk3::prelude::*;
+use chrono::{DateTime, Utc};
+use hdk::prelude::*;
 
 use crate::{PrivateShortFormExpression, ShortFormExpression, ShortFormExpressionData};
 
 use crate::utils::err;
 
-#[derive(SerializedBytes, Serialize, Deserialize, Clone)]
+#[derive(SerializedBytes, Serialize, Deserialize, Clone, Debug)]
 pub struct CreateExpression {
     pub data: String,
     pub author: Agent,
@@ -12,13 +13,13 @@ pub struct CreateExpression {
     pub proof: ExpressionProof,
 }
 
-#[derive(SerializedBytes, Serialize, Deserialize, Clone)]
+#[derive(SerializedBytes, Serialize, Deserialize, Clone, Debug)]
 pub struct ExpressionProof {
     pub signature: String,
     pub key: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes)]
+#[derive(Serialize, Deserialize, Clone, Debug, SerializedBytes)]
 pub struct Agent {
     pub did: String,
     pub name: Option<String>,
@@ -26,7 +27,7 @@ pub struct Agent {
 }
 
 impl TryFrom<CreateExpression> for ShortFormExpression {
-    type Error = HdkError;
+    type Error = WasmError;
 
     fn try_from(content: CreateExpression) -> Result<Self, Self::Error> {
         let expression: ShortFormExpressionData = serde_json::from_str(&content.data)
@@ -52,7 +53,7 @@ impl From<ShortFormExpression> for PrivateShortFormExpression {
     }
 }
 
-#[derive(SerializedBytes, Serialize, Deserialize)]
+#[derive(SerializedBytes, Serialize, Deserialize, Debug)]
 pub struct CreatePrivateExpression {
     pub data: String,
     pub author: Agent,
@@ -60,20 +61,20 @@ pub struct CreatePrivateExpression {
     pub proof: ExpressionProof,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes)]
+#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug)]
 pub struct GetByAuthor {
     pub author: String,
-    pub page_size: usize,
-    pub page_number: usize,
+    pub from: DateTime<Utc>,
+    pub until: DateTime<Utc>,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes)]
+#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug)]
 pub struct SendPrivate {
     pub to: AgentPubKey,
     pub expression: CreateExpression,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes)]
+#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug)]
 pub struct Inbox {
     pub from: Option<String>,
     pub page_size: usize,

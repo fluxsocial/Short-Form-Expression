@@ -1,5 +1,5 @@
-use hdk3::prelude::*;
+use hdk::prelude::*;
 
-pub fn err(reason: &str) -> HdkError {
-    HdkError::Wasm(WasmError::Zome(String::from(reason)))
+pub fn err(reason: &str) -> WasmError {
+    WasmError::Host(String::from(reason))
 }

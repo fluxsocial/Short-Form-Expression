@@ -1,16 +1,18 @@
-use hc_utils::WrappedAgentPubKey;
-use hdk3::prelude::*;
+use hdk::prelude::*;
 
 mod inputs;
 mod methods;
 mod outputs;
 mod utils;
+mod impls;
+mod errors;
 
 use inputs::*;
 use outputs::*;
 
 /// Expression data this DNA is "hosting"
 #[hdk_entry(id = "shortform_expression", visibility = "public")]
+#[derive(Clone)]
 pub struct ShortFormExpression {
     data: ShortFormExpressionData,
     author: Agent,
@@ -27,14 +29,11 @@ pub struct PrivateShortFormExpression {
     proof: ExpressionProof,
 }
 
-#[derive(Serialize, Deserialize, Clone, SerializedBytes)]
+#[derive(Serialize, Deserialize, Clone, SerializedBytes, Debug)]
 pub struct ShortFormExpressionData {
     background: Vec<String>,
     body: String,
 }
-
-#[hdk_entry(id = "acai_agent", visibility = "public")]
-pub struct AcaiAgent(pub String);
 
 #[hdk_entry(id = "private_acai_agent", visibility = "private")]
 pub struct PrivateAcaiAgent(pub String);
@@ -44,7 +43,6 @@ pub struct ExpressionDNA();
 entry_defs![
     ShortFormExpression::entry_def(),
     PrivateShortFormExpression::entry_def(),
-    AcaiAgent::entry_def(),
     PrivateAcaiAgent::entry_def(),
     Path::entry_def()
 ];
@@ -69,21 +67,13 @@ fn init(_: ()) -> ExternResult<InitCallbackResult> {
 
 #[hdk_extern]
 pub fn recv_private_expression(create_data: PrivateShortFormExpression) -> ExternResult<()> {
-    ExpressionDNA::recv_private_expression(create_data)
-}
-
-/// Get agent information
-#[hdk_extern]
-pub fn who_am_i(_: ()) -> ExternResult<WrappedAgentPubKey> {
-    let agent_info = agent_info()?;
-
-    Ok(WrappedAgentPubKey(agent_info.agent_initial_pubkey))
+    ExpressionDNA::recv_private_expression(create_data).map_err(|err| WasmError::Host(err.to_string()))
 }
 
 /// Create an expression and link it to yourself publicly
 #[hdk_extern]
 pub fn create_public_expression(create_data: CreateExpression) -> ExternResult<ExpressionResponse> {
-    Ok(ExpressionDNA::create_public_expression(create_data)?)
+    Ok(ExpressionDNA::create_public_expression(create_data).map_err(|err| WasmError::Host(err.to_string()))?)
 }
 
 /// Get expressions authored by a given Agent/Identity
@@ -91,16 +81,16 @@ pub fn create_public_expression(create_data: CreateExpression) -> ExternResult<E
 pub fn get_by_author(get_data: GetByAuthor) -> ExternResult<ManyExpressionResponse> {
     Ok(ManyExpressionResponse(ExpressionDNA::get_by_author(
         get_data.author,
-        get_data.page_size,
-        get_data.page_number,
-    )?))
+        get_data.from,
+        get_data.until,
+    ).map_err(|err| WasmError::Host(err.to_string()))?))
 }
 
 #[hdk_extern]
 pub fn get_expression_by_address(address: AnyDhtHash) -> ExternResult<MaybeExpression> {
     Ok(MaybeExpression(ExpressionDNA::get_expression_by_address(
         address,
-    )?))
+    ).map_err(|err| WasmError::Host(err.to_string()))?))
 }
 
 /// Send an expression to someone privately p2p
@@ -109,7 +99,7 @@ pub fn send_private(send_data: SendPrivate) -> ExternResult<PrivateShortFormExpr
     Ok(ExpressionDNA::send_private(
         send_data.to,
         send_data.expression,
-    )?)
+    ).map_err(|err| WasmError::Host(err.to_string()))?)
 }
 
 /// Get private expressions sent to you optionally filtered by sender address
@@ -119,7 +109,7 @@ pub fn inbox(data: Inbox) -> ExternResult<ManyPrivateExpressionResponse> {
         data.from,
         data.page_size,
         data.page_number,
-    )?))
+    ).map_err(|err| WasmError::Host(err.to_string()))?))
 }
 
 /// Allows for describing what other DNA's should be installed in addition to this one
