@@ -64,6 +64,7 @@ orchestrator.registerScenario("create and get public expression", async (s, t) =
   const get_exp = await alice_happ.cells[0].call("shortform", "get_expression_by_address", create_exp.holochain_data.element.signed_header.header.hash)
   console.log("Got exp by address", get_exp);
   t.notEqual(get_exp.expression_data, undefined);
+  t.pass();
 })
 
 orchestrator.registerScenario("test send and receive private", async (s, t) => {
@@ -83,6 +84,7 @@ orchestrator.registerScenario("test send and receive private", async (s, t) => {
 
   const get_inbox_from = await bob_happ.cells[0].call("shortform", "inbox", {from: "did://alice", page_size: 10, page_number: 0})
   t.deepEqual(get_inbox_from.length, 1)
+  t.pass();
 })
 
 // Run all registered scenarios as a final step, and gather the report,

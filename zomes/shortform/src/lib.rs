@@ -54,7 +54,7 @@ entry_defs![
 #[hdk_extern]
 fn init(_: ()) -> ExternResult<InitCallbackResult> {
     // grant unrestricted access to accept_cap_claim so other agents can send us claims
-    let mut functions: GrantedFunctions = HashSet::new();
+    let mut functions: GrantedFunctions = BTreeSet::new();
     functions.insert((zome_info()?.zome_name, "recv_private_expression".into()));
     create_cap_grant(CapGrantEntry {
         tag: "".into(),
