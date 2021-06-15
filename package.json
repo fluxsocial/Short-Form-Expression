@@ -7,6 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build-icons": "rollup -c rollup.config.icons.js",
     "build": "cd hc-dna && CARGO_TARGET_DIR=target cargo build --release --target wasm32-unknown-unknown && hc dna pack workdir && cd ../ && npm i && npm run build-icons && tsc && rollup -c",
+    "build-dna": "cd hc-dna && nix-shell --run ./build.sh && cd ..",
+    "build-nix": "npm run build-dna && npm run build-icons && tsc && rollup -c",
     "dev": "tsc && rollup -c rollup.config.icons.js && rollup -c -w"
   },
   "author": "",

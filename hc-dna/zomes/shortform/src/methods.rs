@@ -43,7 +43,7 @@ impl ExpressionDNA {
         from: DateTime<Utc>,
         until: DateTime<Utc>,
     ) -> ExpressionResult<Vec<ExpressionResponse>> {
-        let links = hc_time_index::get_links_for_time_span(author, from, until, None, Some(LinkTag::new("expression")))?;
+        let links = hc_time_index::get_links_for_time_span(author, from, until, Some(LinkTag::new("expression")), hc_time_index::SearchStrategy::Bfs, None)?;
         debug!("got links: {:#?}", links);
         Ok(links
             .into_iter()
