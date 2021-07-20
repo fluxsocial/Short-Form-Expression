@@ -17,7 +17,7 @@ impl ExpressionDNA {
         create_entry(&expression)?;
 
         //Create time index for did author so that get_by_author can query with time pagination
-        hc_time_index::index_entry(expression.author.did.clone(), expression.clone(), LinkTag::new("expression"))?;
+        hc_time_index::index_entry(expression.author.clone(), expression.clone(), LinkTag::new("expression"))?;
 
         let expression_element = get(expression_hash, GetOptions::default())?
             .ok_or(err("Could not get entry after commit"))?;
@@ -203,7 +203,7 @@ impl ExpressionDNA {
     }
 
     pub fn recv_private_expression(create_data: PrivateShortFormExpression) -> ExpressionResult<()> {
-        let agent_entry = PrivateAcaiAgent(create_data.author.did.clone());
+        let agent_entry = PrivateAcaiAgent(create_data.author.clone());
         let agent_entry_hash = hash_entry(&agent_entry)?;
         create_entry(&agent_entry)?;
 

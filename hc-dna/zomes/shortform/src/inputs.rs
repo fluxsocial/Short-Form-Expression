@@ -8,7 +8,7 @@ use crate::utils::err;
 #[derive(SerializedBytes, Serialize, Deserialize, Clone, Debug)]
 pub struct CreateExpression {
     pub data: String,
-    pub author: Agent,
+    pub author: String,
     pub timestamp: DateTime<Utc>,
     pub proof: ExpressionProof,
 }
@@ -17,13 +17,6 @@ pub struct CreateExpression {
 pub struct ExpressionProof {
     pub signature: String,
     pub key: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, SerializedBytes)]
-pub struct Agent {
-    pub did: String,
-    pub name: Option<String>,
-    pub email: Option<String>,
 }
 
 impl TryFrom<CreateExpression> for ShortFormExpression {
@@ -56,7 +49,7 @@ impl From<ShortFormExpression> for PrivateShortFormExpression {
 #[derive(SerializedBytes, Serialize, Deserialize, Debug)]
 pub struct CreatePrivateExpression {
     pub data: String,
-    pub author: Agent,
+    pub author: String,
     pub timestamp: String,
     pub proof: ExpressionProof,
 }

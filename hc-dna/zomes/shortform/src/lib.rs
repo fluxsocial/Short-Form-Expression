@@ -16,7 +16,7 @@ use outputs::*;
 #[derive(Clone)]
 pub struct ShortFormExpression {
     data: ShortFormExpressionData,
-    author: Agent,
+    author: String,
     timestamp: DateTime<Utc>,
     proof: ExpressionProof,
 }
@@ -25,7 +25,7 @@ pub struct ShortFormExpression {
 #[hdk_entry(id = "private_shortform_expression", visibility = "private")]
 pub struct PrivateShortFormExpression {
     data: ShortFormExpressionData,
-    author: Agent,
+    author: String,
     timestamp: DateTime<Utc>,
     proof: ExpressionProof,
 }

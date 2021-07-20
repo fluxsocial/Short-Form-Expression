@@ -43,7 +43,7 @@ orchestrator.registerScenario("create and get public expression", async (s, t) =
 
   //Create a public expression from alice
   const create_exp = await alice_happ.cells[0].call("shortform", "create_public_expression", 
-    {data: JSON.stringify({background: [], body: "A test expression"}), author: {did: "did://alice", name: null, email: null}, timestamp: new Date().toISOString(), proof: {key: "key", signature: "sig"}})
+    {data: JSON.stringify({background: [], body: "A test expression"}), author: "did://alice", timestamp: new Date().toISOString(), proof: {key: "key", signature: "sig"}})
   console.log("Created expression", create_exp);
   t.notEqual(create_exp.expression_data, undefined);
   
