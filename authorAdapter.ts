@@ -7,8 +7,6 @@ export default class ShortFormAuthorAdapter implements GetByAuthorAdapter {
     this.#shortFormDNA = context.Holochain as HolochainLanguageDelegate;
   }
 
-  //Question: For this author; assuming we resolved with profile DHT; how do we know which agent to use if they have multiple listed?
-  //might not be a clear 1:1 mapping for did to agents
   ///Get expressions authored by a given Agent/Identity
   async getByAuthor(
     author: string,

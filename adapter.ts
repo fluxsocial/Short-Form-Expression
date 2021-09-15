@@ -53,10 +53,10 @@ export default class ShortFormAdapter implements ExpressionAdapter {
       hash
     );
     if (expression != null) {
-      const acai_expression: Expression = Object.assign(
+      const ad4mExpression: Expression = Object.assign(
         expression.expression_data
       );
-      return acai_expression;
+      return ad4mExpression;
     } else {
       return null;
     }
