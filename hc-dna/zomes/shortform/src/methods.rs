@@ -21,13 +21,13 @@ impl ExpressionDNA {
 
         let expression_element = get(expression_hash, GetOptions::default())?
             .ok_or(err("Could not get entry after commit"))?;
-        let timestamp = expression_element.header().timestamp();
+        let timestamp = expression_element.header().timestamp().as_seconds_and_nanos();
 
         Ok(ExpressionResponse {
             expression_data: expression,
             holochain_data: HolochainData {
                 element: expression_element,
-                expression_dna: zome_info()?.dna_hash,
+                expression_dna: zome_info()?.dna_hash.to_string(),
                 creator: agent_info()?.agent_latest_pubkey,
                 created_at: chrono::DateTime::from_utc(
                     chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
@@ -50,7 +50,7 @@ impl ExpressionDNA {
             .map(|link| {
                 let expression_element = get(link.target, GetOptions::default())?
                     .ok_or(err("Could not get entry after commit"))?;
-                let timestamp = expression_element.header().timestamp();
+                let timestamp = expression_element.header().timestamp().as_seconds_and_nanos();
                 let exp_data: ShortFormExpression = expression_element
                     .entry()
                     .to_app_option()?
@@ -61,7 +61,7 @@ impl ExpressionDNA {
                     expression_data: exp_data,
                     holochain_data: HolochainData {
                         element: expression_element,
-                        expression_dna: zome_info()?.dna_hash,
+                        expression_dna: zome_info()?.dna_hash.to_string(),
                         creator: agent_info()?.agent_latest_pubkey,
                         created_at: chrono::DateTime::from_utc(
                             chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
@@ -85,12 +85,12 @@ impl ExpressionDNA {
                     .ok_or(WasmError::Host(String::from(
                         "Could not deserialize link expression data into ShortFormExpression",
                     )))?;
-                let timestamp = expression_element.header().timestamp();
+                let timestamp = expression_element.header().timestamp().as_seconds_and_nanos();
                 Ok(Some(ExpressionResponse {
                     expression_data: exp_data,
                     holochain_data: HolochainData {
                         element: expression_element,
-                        expression_dna: zome_info()?.dna_hash,
+                        expression_dna: zome_info()?.dna_hash.to_string(),
                         creator: agent_info()?.agent_latest_pubkey,
                         created_at: chrono::DateTime::from_utc(
                             chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
@@ -146,7 +146,7 @@ impl ExpressionDNA {
                     .map(|link| {
                         let expression_element = get(link.target, GetOptions::default())?
                             .ok_or(err("Could not get entry after commit"))?;
-                        let timestamp = expression_element.header().timestamp();
+                        let timestamp = expression_element.header().timestamp().as_seconds_and_nanos();
                         let exp_data: PrivateShortFormExpression = expression_element
                             .entry()
                             .to_app_option()?
@@ -157,7 +157,7 @@ impl ExpressionDNA {
                             expression_data: exp_data,
                             holochain_data: HolochainData {
                                 element: expression_element,
-                                expression_dna: zome_info()?.dna_hash,
+                                expression_dna: zome_info()?.dna_hash.to_string(),
                                 creator: agent_info()?.agent_latest_pubkey,
                                 created_at: chrono::DateTime::from_utc(
                                     chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),
@@ -183,12 +183,12 @@ impl ExpressionDNA {
                             .ok_or(WasmError::Host(String::from(
                                 "Could not deserialize local expression data into PrivateShortFormExpression",
                             )))?;
-                        let timestamp = expression_element.header().timestamp();
+                        let timestamp = expression_element.header().timestamp().as_seconds_and_nanos();
                         Ok(PrivateExpressionResponse {
                             expression_data: exp_data,
                             holochain_data: HolochainData {
                                 element: expression_element,
-                                expression_dna: zome_info()?.dna_hash,
+                                expression_dna: zome_info()?.dna_hash.to_string(),
                                 creator: agent_info()?.agent_latest_pubkey,
                                 created_at: chrono::DateTime::from_utc(
                                     chrono::naive::NaiveDateTime::from_timestamp(timestamp.0, timestamp.1),

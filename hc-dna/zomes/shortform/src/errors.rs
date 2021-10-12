@@ -1,5 +1,5 @@
 use hdk::prelude::*;
-use holo_hash::error::HoloHashError;
+use ::holo_hash::error::HoloHashError;
 use std::convert::Infallible;
 
 use hc_time_index::errors::IndexError;
